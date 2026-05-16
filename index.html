@@ -939,7 +939,7 @@
 
 <div id="start-screen">
   <h1>SCOPE</h1>
-  <div class="sub">SNIPER 1V1 // DUEL REALM — V1.6.2</div>
+  <div class="sub">SNIPER 1V1 // DUEL REALM — V1.6.3</div>
 
   <div class="menu" id="main-menu">
     <button class="play" id="play-btn">PRACTICE RANGE</button>
@@ -3579,32 +3579,52 @@ function netStatus(msg, bad) {
   if (typeof NET.onState === 'function') NET.onState(msg, !!bad);
 }
 
-// ICE server config: multiple public STUN + free OpenRelay TURN fallback.
-// TURN relays the WebRTC traffic when direct peer connection fails (NAT/firewall).
-// Without TURN, ~10-30% of internet connections cannot reach each other directly.
+// ICE server config: multiple public STUN + multiple TURN providers as fallback.
+// TURN relays WebRTC traffic when direct peer connection fails (NAT/firewall).
 const NET_ICE_CONFIG = {
   iceServers: [
+    // Public STUN (multiple providers for redundancy)
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
     { urls: 'stun:stun.cloudflare.com:3478' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    // OpenRelay TURN (best-effort free service)
+    { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+    // Alternate free TURN
+    { urls: 'turn:freestun.net:3478', username: 'free', credential: 'free' },
+    { urls: 'turns:freestun.net:5350', username: 'free', credential: 'free' },
   ],
+  iceCandidatePoolSize: 10,
 };
+
+// Hook ICE state changes onto the underlying RTCPeerConnection so we can see
+// exactly where negotiation fails (status shows up in the host/join panel).
+function attachIceDiagnostics(conn) {
+  const tryAttach = () => {
+    const pc = conn.peerConnection;
+    if (!pc) { setTimeout(tryAttach, 200); return; }
+    const log = (label, state) => {
+      console.log('[ICE]', label, state);
+      netStatus(label.toUpperCase() + ': ' + state, state === 'failed' || state === 'disconnected');
+    };
+    pc.addEventListener('iceconnectionstatechange', () => log('ICE', pc.iceConnectionState));
+    pc.addEventListener('icegatheringstatechange',  () => log('GATHER', pc.iceGatheringState));
+    pc.addEventListener('connectionstatechange',    () => log('CONN', pc.connectionState));
+    pc.addEventListener('icecandidate', (e) => {
+      if (e.candidate) {
+        const c = e.candidate;
+        // Report which kind of candidate was found (host, srflx=STUN, relay=TURN)
+        console.log('[ICE candidate]', c.type || 'unknown', c.protocol, c.address);
+      }
+    });
+  };
+  tryAttach();
+}
 
 function netDisconnect(reason) {
   if (NET.conn) { try { NET.conn.close(); } catch (e) {} }
@@ -3661,13 +3681,15 @@ function netJoin(code) {
 }
 
 function wireConnection(conn) {
-  // 15s timeout — if data channel doesn't open by then, show a clear error
+  // ICE diagnostics — shows what's happening with WebRTC negotiation
+  attachIceDiagnostics(conn);
+  // 25s timeout — gives TURN servers extra time to fall back when STUN fails
   const timeout = setTimeout(() => {
     if (!NET.connected) {
-      netStatus('connection timed out — try a different network or have your friend host', true);
+      netStatus('timed out — open F12 console, share errors, or try mobile hotspot', true);
       try { conn.close(); } catch (e) {}
     }
-  }, 15000);
+  }, 25000);
   conn.on('open', () => {
     clearTimeout(timeout);
     NET.connected = true;
