@@ -940,7 +940,7 @@
 
 <div id="start-screen">
   <h1>SCOPE</h1>
-  <div class="sub">SNIPER 1V1 // DUEL REALM — V1.6.4</div>
+  <div class="sub">SNIPER 1V1 // DUEL REALM — V1.6.5</div>
 
   <div class="menu" id="main-menu">
     <button class="play" id="play-btn">PRACTICE RANGE</button>
@@ -3580,25 +3580,36 @@ function netStatus(msg, bad) {
   if (typeof NET.onState === 'function') NET.onState(msg, !!bad);
 }
 
-// ICE server config: multiple public STUN + multiple TURN providers as fallback.
+// ICE server config: public STUN + Metered.ca free TURN for NAT traversal.
 // TURN relays WebRTC traffic when direct peer connection fails (NAT/firewall).
 const NET_ICE_CONFIG = {
   iceServers: [
-    // Public STUN (multiple providers for redundancy)
+    // STUN (multiple providers for redundancy)
+    { urls: 'stun:stun.relay.metered.ca:80' },
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
     { urls: 'stun:stun.cloudflare.com:3478' },
-    { urls: 'stun:global.stun.twilio.com:3478' },
-    // OpenRelay TURN (best-effort free service)
-    { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-    // Alternate free TURN
-    { urls: 'turn:freestun.net:3478', username: 'free', credential: 'free' },
-    { urls: 'turns:freestun.net:5350', username: 'free', credential: 'free' },
+    // Metered.ca TURN — free tier with personal credentials
+    {
+      urls: 'turn:global.relay.metered.ca:80',
+      username: '632bc3fcbc715d62a1654733',
+      credential: 'Z+NLZb1U3YJm0FbB',
+    },
+    {
+      urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+      username: '632bc3fcbc715d62a1654733',
+      credential: 'Z+NLZb1U3YJm0FbB',
+    },
+    {
+      urls: 'turn:global.relay.metered.ca:443',
+      username: '632bc3fcbc715d62a1654733',
+      credential: 'Z+NLZb1U3YJm0FbB',
+    },
+    {
+      urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+      username: '632bc3fcbc715d62a1654733',
+      credential: 'Z+NLZb1U3YJm0FbB',
+    },
   ],
   iceCandidatePoolSize: 10,
 };
