@@ -939,7 +939,7 @@
 
 <div id="start-screen">
   <h1>SCOPE</h1>
-  <div class="sub">SNIPER 1V1 // DUEL REALM — V1.6.1</div>
+  <div class="sub">SNIPER 1V1 // DUEL REALM — V1.6.2</div>
 
   <div class="menu" id="main-menu">
     <button class="play" id="play-btn">PRACTICE RANGE</button>
@@ -3579,6 +3579,33 @@ function netStatus(msg, bad) {
   if (typeof NET.onState === 'function') NET.onState(msg, !!bad);
 }
 
+// ICE server config: multiple public STUN + free OpenRelay TURN fallback.
+// TURN relays the WebRTC traffic when direct peer connection fails (NAT/firewall).
+// Without TURN, ~10-30% of internet connections cannot reach each other directly.
+const NET_ICE_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+  ],
+};
+
 function netDisconnect(reason) {
   if (NET.conn) { try { NET.conn.close(); } catch (e) {} }
   if (NET.peer) { try { NET.peer.destroy(); } catch (e) {} }
@@ -3598,7 +3625,7 @@ function netHost() {
   NET.code = code;
   NET.isHost = true;
   netStatus('connecting to broker…');
-  NET.peer = new Peer('scope-mp-' + code, { debug: 1 });
+  NET.peer = new Peer('scope-mp-' + code, { debug: 1, config: NET_ICE_CONFIG });
   NET.peer.on('open', () => {
     netStatus('LOBBY OPEN — waiting for opponent · ' + code);
   });
@@ -3619,7 +3646,7 @@ function netJoin(code) {
   NET.code = code;
   NET.isHost = false;
   netStatus('connecting to broker…');
-  NET.peer = new Peer(undefined, { debug: 1 });
+  NET.peer = new Peer(undefined, { debug: 1, config: NET_ICE_CONFIG });
   NET.peer.on('open', () => {
     netStatus('connecting to host…');
     const conn = NET.peer.connect('scope-mp-' + code, { reliable: true });
@@ -3634,7 +3661,15 @@ function netJoin(code) {
 }
 
 function wireConnection(conn) {
+  // 15s timeout — if data channel doesn't open by then, show a clear error
+  const timeout = setTimeout(() => {
+    if (!NET.connected) {
+      netStatus('connection timed out — try a different network or have your friend host', true);
+      try { conn.close(); } catch (e) {}
+    }
+  }, 15000);
   conn.on('open', () => {
+    clearTimeout(timeout);
     NET.connected = true;
     netStatus('CONNECTED');
     // Exchange character configs immediately
@@ -3649,11 +3684,14 @@ function wireConnection(conn) {
   });
   conn.on('data', onNetMessage);
   conn.on('close', () => {
+    clearTimeout(timeout);
     NET.connected = false;
     onOpponentDisconnect();
   });
   conn.on('error', (err) => {
+    clearTimeout(timeout);
     console.warn('[NET] conn error', err);
+    netStatus('connection error: ' + (err && err.message || err), true);
   });
 }
 
