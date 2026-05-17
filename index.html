@@ -619,6 +619,31 @@
     font-size: 13px;
     letter-spacing: 1px;
   }
+  /* Toggle button style — used for boolean settings */
+  #start-screen .setting-row .toggle-btn {
+    background: transparent;
+    border: 1px solid var(--dim);
+    color: var(--dim);
+    padding: 6px 18px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    min-width: 100px;
+  }
+  #start-screen .setting-row .toggle-btn:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+  #start-screen .setting-row .toggle-btn.on {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(198, 58, 58, 0.10);
+  }
+  #start-screen .setting-row .toggle-btn.on:hover {
+    background: rgba(198, 58, 58, 0.18);
+  }
   #start-screen .setting-note {
     color: var(--dim);
     font-size: 10px;
@@ -782,6 +807,98 @@
     background: radial-gradient(circle at 50% 50%, transparent 50%, rgba(0,0,0,0.55) 100%);
   }
 
+  /* ===== CRT MODE (toggleable retro filter) ===== */
+  /* Five layered overlays that combine to create a CRT-monitor feel.
+     Hidden by default; body.crt-on enables them. */
+  #crt-scanlines, #crt-vignette, #crt-noise, #crt-distort, #crt-flicker {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  body.crt-on #crt-scanlines,
+  body.crt-on #crt-vignette,
+  body.crt-on #crt-noise,
+  body.crt-on #crt-distort,
+  body.crt-on #crt-flicker { opacity: 1; }
+
+  /* Horizontal scanlines */
+  #crt-scanlines {
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.22) 0px,
+      rgba(0,0,0,0.22) 1px,
+      transparent 1px,
+      transparent 3px);
+    mix-blend-mode: multiply;
+  }
+
+  /* Curved-corner vignette (fakes screen curvature by darkening corners) */
+  #crt-vignette {
+    background:
+      radial-gradient(ellipse 110% 95% at center,
+        transparent 38%,
+        rgba(0,0,0,0.35) 78%,
+        rgba(0,0,0,0.92) 100%),
+      radial-gradient(ellipse 60% 50% at center,
+        rgba(80,140,255,0.04) 0%,
+        transparent 60%);
+  }
+
+  /* Analog noise — animated SVG fractal noise */
+  #crt-noise {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.7'/%3E%3C/svg%3E");
+    opacity: 0.07 !important;
+    mix-blend-mode: screen;
+    animation: crt-noise 0.12s steps(3) infinite;
+  }
+  body.crt-on #crt-noise { opacity: 0.07; }
+  @keyframes crt-noise {
+    0%   { transform: translate(0%, 0%); }
+    33%  { transform: translate(-2%, 1%); }
+    66%  { transform: translate(1%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+
+  /* Horizontal distortion bar — soft white band that occasionally rolls down */
+  #crt-distort {
+    height: 80px;
+    top: -80px;
+    background: linear-gradient(180deg,
+      transparent 0%,
+      rgba(255,255,255,0.04) 30%,
+      rgba(255,255,255,0.10) 50%,
+      rgba(255,255,255,0.04) 70%,
+      transparent 100%);
+    animation: crt-distort 11s linear infinite;
+  }
+  body.crt-on #crt-distort { opacity: 1; }
+  @keyframes crt-distort {
+    0%, 87%   { top: -80px; }
+    88%       { top: -80px; }
+    100%      { top: 100vh; }
+  }
+
+  /* Slow screen flicker — subtle brightness wobble */
+  #crt-flicker {
+    background: rgba(255,255,255,0.015);
+    animation: crt-flicker 0.18s infinite alternate;
+  }
+  body.crt-on #crt-flicker { opacity: 1; }
+  @keyframes crt-flicker {
+    0%   { opacity: 0; }
+    100% { opacity: 0.4; }
+  }
+
+  /* Chromatic aberration on the canvas + slight contrast bump */
+  body.crt-on #game-canvas {
+    filter:
+      drop-shadow(0.9px 0 0 rgba(255,40,40,0.30))
+      drop-shadow(-0.9px 0 0 rgba(40,210,255,0.30))
+      contrast(1.06) brightness(0.96) saturate(1.05);
+  }
+
   /* Slide motion lines — radial streaks pulled inward */
   #motion-lines {
     position: fixed; inset: 0; pointer-events: none; z-index: 6;
@@ -843,6 +960,13 @@
 
 <div id="vignette"></div>
 <div id="motion-lines"></div>
+
+<!-- CRT MODE overlay layers (hidden until body.crt-on) -->
+<div id="crt-scanlines"></div>
+<div id="crt-vignette"></div>
+<div id="crt-noise"></div>
+<div id="crt-distort"></div>
+<div id="crt-flicker"></div>
 
 <div id="hud">
   <div class="crosshair" id="crosshair">
@@ -940,7 +1064,7 @@
 
 <div id="start-screen">
   <h1>SCOPE</h1>
-  <div class="sub">SNIPER 1V1 // DUEL REALM — V1.6.5</div>
+  <div class="sub">SNIPER 1V1 // DUEL REALM — V1.8</div>
 
   <div class="menu" id="main-menu">
     <button class="play" id="play-btn">PRACTICE RANGE</button>
@@ -998,7 +1122,12 @@
       <input type="range" min="10" max="50" value="24" id="set-pixel" />
       <span class="val" id="set-pixel-val">2.4</span>
     </div>
-    <div class="setting-note">Settings auto-save. Pixel chunk: 1.0 = crisp, 5.0 = very chunky.</div>
+    <div class="setting-row">
+      <span class="name">CRT MODE</span>
+      <button class="toggle-btn" id="set-crt">OFF</button>
+      <span class="val">&nbsp;</span>
+    </div>
+    <div class="setting-note">Settings auto-save. Pixel chunk: 1.0 = crisp, 5.0 = very chunky. CRT mode adds retro scanlines, chromatic aberration, screen curvature, and analog noise.</div>
     <div class="row">
       <button class="play" id="set-reset">RESET</button>
       <button class="play" id="set-back">BACK</button>
@@ -1052,6 +1181,11 @@
         <div class="map-name">BLACKWATER ALLEY</div>
         <div class="map-desc">Victorian London at night. 4 corner buildings with rooftop perches, ladders, central bridge crossing. Rain and gas lamps.</div>
         <div class="map-tag">DENSE COVER · ROOFTOPS · RAIN</div>
+      </div>
+      <div class="map-tile" data-map="cathedral">
+        <div class="map-name">MOONLIT CATHEDRAL</div>
+        <div class="map-desc">Symmetric competitive arena. Central altar power zone, two transept bridges, two choir-loft sniper perches. Built for clean duels.</div>
+        <div class="map-tag">MIRROR-BALANCED · 3 TIERS · COMPETITIVE</div>
       </div>
     </div>
     <div class="setting-note">Selecting a map reloads the page. Your settings are preserved.</div>
@@ -1149,6 +1283,7 @@ const SETTINGS = {
   scopeFov: 22,
   volume: 0.7,
   pixelScale: 2.4,
+  crt: false,            // retro CRT filter (scanlines, vignette, noise, aberration)
   map: 'necropolis',     // selected map for next session
   // Character customization
   hat:   'none',
@@ -3233,11 +3368,549 @@ function buildBlackwaterAlley() {
   scene.add(fogFloor);
 }
 
+// =========================================================
+//  MAP: Moonlit Cathedral — competitive 1v1 sniper arena
+//  4-way symmetric (X and Z mirrored). Three verticality tiers:
+//   - Ground (y=0): nave + side aisles with pillars and broken cover
+//   - Bridges (y=3.5): two transept bridges crossing east-west at z=±8
+//   - Choir lofts (y=6): sniper perches at each spawn end
+//  Central altar (y=1.2) is the contested power zone.
+// =========================================================
+function buildCathedral() {
+  // === Atmosphere — moonlit gothic, cold blue palette ===
+  scene.background = new THREE.Color(0x070912);
+  scene.fog = new THREE.Fog(0x0a0c18, 16, 85);
+  hemi.color.setHex(0x2a3852);
+  hemi.groundColor.setHex(0x050608);
+  hemi.intensity = 0.50;
+  moon.color.setHex(0xc8d4f0);
+  moon.intensity = 0.70;
+  moon.position.set(-25, 60, 35);
+  accent.color.setHex(0x4a5a82);
+  accent.intensity = 0.30;
+  accent.position.set(0, 12, 0);
+
+  // === Materials ===
+  const tmat = {
+    floor:   new THREE.MeshLambertMaterial({ map: TEX.cobble.clone(), color: 0x808080 }),
+    stone:   new THREE.MeshLambertMaterial({ map: TEX.stone.clone(),  color: 0xa0a0a0 }),
+    stoneDk: new THREE.MeshLambertMaterial({ map: TEX.stone.clone(),  color: 0x606060 }),
+    stoneL:  new THREE.MeshLambertMaterial({ map: TEX.stone.clone(),  color: 0xcccccc }),
+    wood:    new THREE.MeshLambertMaterial({ map: TEX.wood.clone(),   color: 0x808080 }),
+    iron:    new THREE.MeshLambertMaterial({ color: 0x0a0a0c }),
+    gold:    new THREE.MeshLambertMaterial({ color: 0xb89540, emissive: 0x2a1808 }),
+    flame:   new THREE.MeshBasicMaterial({ color: 0xffaa44 }),
+    glassR:  new THREE.MeshBasicMaterial({ color: 0xc83a3a }),
+    glassB:  new THREE.MeshBasicMaterial({ color: 0x3a6acc }),
+    glassP:  new THREE.MeshBasicMaterial({ color: 0x8a4ac0 }),
+    glassY:  new THREE.MeshBasicMaterial({ color: 0xddc83a }),
+  };
+  tmat.floor.map.repeat.set(20, 20);
+  tmat.stone.map.repeat.set(2, 2);
+  tmat.stoneDk.map.repeat.set(2, 2);
+  tmat.stoneL.map.repeat.set(2, 2);
+  tmat.wood.map.repeat.set(1, 1);
+
+  // Helpers
+  function box(w, h, d, x, y, z, mat, collide = true) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x, y, z);
+    scene.add(m);
+    if (collide) addBoxCollider(m);
+    return m;
+  }
+  function decor(w, h, d, x, y, z, mat) { return box(w, h, d, x, y, z, mat, false); }
+
+  const ARENA = 40;
+
+  // ========== FLOOR ==========
+  box(ARENA * 2, 1, ARENA * 2, 0, -0.5, 0, tmat.floor);
+
+  // ========== OUTER WALLS ==========
+  const wallH = 14;
+  box(ARENA * 2, wallH, 1, 0, wallH / 2,  ARENA, tmat.stone);
+  box(ARENA * 2, wallH, 1, 0, wallH / 2, -ARENA, tmat.stone);
+  box(1, wallH, ARENA * 2,  ARENA, wallH / 2, 0, tmat.stone);
+  box(1, wallH, ARENA * 2, -ARENA, wallH / 2, 0, tmat.stone);
+  // Wall trim — gives the walls visual rhythm
+  for (const wallZ of [-ARENA, ARENA]) {
+    decor(ARENA * 2, 0.4, 1.2, 0, 6,  wallZ, tmat.stoneL);
+    decor(ARENA * 2, 0.4, 1.2, 0, 12, wallZ, tmat.stoneL);
+  }
+  for (const wallX of [-ARENA, ARENA]) {
+    decor(1.2, 0.4, ARENA * 2, wallX, 6,  0, tmat.stoneL);
+    decor(1.2, 0.4, ARENA * 2, wallX, 12, 0, tmat.stoneL);
+  }
+
+  // ========== STAINED GLASS WINDOWS (along east + west walls) ==========
+  const glasses = [tmat.glassR, tmat.glassB, tmat.glassP, tmat.glassY];
+  for (let i = 0; i < 4; i++) {
+    const z = -24 + i * 16;
+    const c = glasses[i % glasses.length];
+    // East
+    decor(0.4, 5, 2.6,  ARENA - 0.6, 8, z, tmat.stoneDk);
+    decor(0.1, 4.5, 2.2, ARENA - 0.4, 8, z, c);
+    // West
+    decor(0.4, 5, 2.6, -ARENA + 0.6, 8, z, tmat.stoneDk);
+    decor(0.1, 4.5, 2.2, -ARENA + 0.4, 8, z, c);
+  }
+  // Rose windows at N and S ends
+  for (const sz of [-1, 1]) {
+    decor(10, 0.6, 0.5, 0, 10, sz * (ARENA - 0.3), tmat.stoneDk);
+    decor(8,  5,   0.2, 0, 10, sz * (ARENA - 0.4), tmat.glassP);
+    decor(9,  6,   0.3, 0, 10, sz * (ARENA - 0.5), tmat.stoneDk);
+  }
+
+  // ========== CENTRAL ALTAR (power zone, raised 1.2m) ==========
+  box(6, 1.2, 6, 0, 0.6, 0, tmat.stoneL);  // main block
+  box(4, 0.4, 4, 0, 1.4, 0, tmat.stoneL);  // inner step
+  // Cross on top
+  decor(0.3, 1.8, 0.3, 0, 2.5, 0, tmat.gold);
+  decor(1.2, 0.3, 0.3, 0, 2.9, 0, tmat.gold);
+  // Candle stands on altar corners (with light)
+  for (const [dx, dz] of [[-1.7, -1.7], [1.7, -1.7], [-1.7, 1.7], [1.7, 1.7]]) {
+    decor(0.15, 0.8, 0.15, dx, 2.0, dz, tmat.iron);
+    const flameInst = tmat.flame.clone();
+    const flame = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.25, 0.2), flameInst);
+    flame.position.set(dx, 2.5, dz);
+    scene.add(flame);
+    const pl = new THREE.PointLight(0xff8a3a, 0.50, 9, 2);
+    pl.position.set(dx, 2.5, dz);
+    scene.add(pl);
+    world.flickerLights.push({
+      light: pl, mesh: flame, base: 0.50,
+      phase: Math.random() * Math.PI * 2, fast: true, isTorch: true,
+    });
+  }
+
+  // ========== PILLAR ROWS (separating nave from aisles) ==========
+  const pillarX = 12;
+  const pillarH = 9;
+  const pillarZs = [-30, -22, -16, -8, 8, 16, 22, 30];
+  for (const z of pillarZs) {
+    for (const sx of [-1, 1]) {
+      box(1.4, pillarH, 1.4, sx * pillarX, pillarH / 2, z, tmat.stone);
+      decor(1.8, 0.5, 1.8, sx * pillarX, pillarH + 0.25, z, tmat.stoneL); // capital
+      decor(1.7, 0.4, 1.7, sx * pillarX, 0.2, z, tmat.stoneL);             // base
+      // Decorative cross at top (small detail)
+      decor(0.2, 0.6, 0.2, sx * pillarX, pillarH + 0.8, z, tmat.gold);
+    }
+  }
+
+  // ========== BROKEN PILLARS (varied-height cover in nave + aisles) ==========
+  const brokenSpots = [
+    // Symmetric across both axes
+    [0, -22, 2.2], [0,  22, 2.2],
+    [-5, -14, 1.8], [5, -14, 1.8], [-5, 14, 1.8], [5, 14, 1.8],
+    [-22, -12, 2.0], [22, -12, 2.0], [-22, 12, 2.0], [22, 12, 2.0],
+    [-22,   0, 1.5], [22,   0, 1.5],
+    [-8, -28, 2.3], [8, -28, 2.3], [-8, 28, 2.3], [8, 28, 2.3],
+  ];
+  for (const [x, z, h] of brokenSpots) {
+    box(1.0, h, 1.0, x, h / 2, z, tmat.stone);
+    decor(1.2, 0.18, 1.2, x, h + 0.09, z, tmat.stoneL);  // jagged broken top
+  }
+
+  // ========== PEWS (low jumpable wooden cover) ==========
+  // Two parallel rows in the nave + two more in each aisle
+  for (const sx of [-1, 1]) {
+    for (const z of [-26, -12, 12, 26]) {
+      box(0.6, 0.65, 3, sx * 4, 0.325, z, tmat.wood);
+      decor(0.15, 0.5, 3, sx * 4 - sx * 0.3, 0.9, z, tmat.wood); // backrest
+    }
+    // Aisle pews (low cover in side lanes)
+    for (const z of [-18, 18]) {
+      box(0.6, 0.65, 3, sx * 17, 0.325, z, tmat.wood);
+      decor(0.15, 0.5, 3, sx * 17 + sx * 0.3, 0.9, z, tmat.wood);
+    }
+  }
+
+  // ========== TRANSEPT BRIDGES (mid-tier, y=3.5) ==========
+  // Two bridges crossing E-W at z=±8, full width.
+  // Railings are SPLIT at x=±20 so stairs can land on the bridge there.
+  for (const sz of [-1, 1]) {
+    const bz = sz * 8;
+    // Deck
+    box(ARENA * 2 - 4, 0.4, 4, 0, 3.5, bz, tmat.stoneL);
+    // Railings — both sides have 3m gaps at x=±20 for stair access.
+    // 76m total → segments of 16.5m + 37m + 16.5m around two 3m gaps.
+    for (const dz of [-2, 2]) {
+      box(37,   0.9, 0.25, 0,      3.5 + 0.65, bz + dz, tmat.stone); // center
+      box(16.5, 0.9, 0.25, -29.75, 3.5 + 0.65, bz + dz, tmat.stone); // left
+      box(16.5, 0.9, 0.25,  29.75, 3.5 + 0.65, bz + dz, tmat.stone); // right
+    }
+    // Support pillars from ground (avoid x=±20 where stairs are)
+    for (const x of [-30, -10, 10, 30]) {
+      box(0.7, 3.5, 0.7, x, 1.75, bz, tmat.stoneDk);
+    }
+    // Decorative arches under bridge
+    for (const x of [-15, -5, 5, 15]) {
+      decor(4, 0.4, 0.5, x, 3.1, bz, tmat.stoneDk);
+    }
+  }
+
+  // ========== WALKABLE STAIRS (uses step-up collision) ==========
+  function buildStaircase(x1, z1, x2, z2, totalH, width, mat) {
+    const dx = x2 - x1, dz = z2 - z1;
+    const lenH = Math.hypot(dx, dz);
+    const stepH = 0.35;
+    const stepCount = Math.ceil(totalH / stepH);
+    const stepDepth = lenH / stepCount;
+    const ux = dx / lenH, uz = dz / lenH;
+    for (let i = 0; i < stepCount; i++) {
+      const cx = x1 + ux * (i + 0.5) * stepDepth;
+      const cz = z1 + uz * (i + 0.5) * stepDepth;
+      const topY = (i + 1) * stepH;
+      const w = Math.abs(ux) > 0.5 ? stepDepth : width;
+      const d = Math.abs(uz) > 0.5 ? stepDepth : width;
+      box(w, topY, d, cx, topY / 2, cz, mat);
+    }
+  }
+
+  // Stairs to each bridge — 4 per bridge (spawn side and center side, both x ends).
+  // Stairs run ALONG Z (perpendicular to bridge) so they don't end under the deck.
+  // Bridge deck spans z = bz±2, so stairs land just past the edge.
+  for (const sz of [-1, 1]) {
+    const bz = sz * 8;
+    // Spawn-side stairs (approach from z further from center, land at bridge spawn-edge)
+    const spawnApproach = bz + sz * 5.5;   // 5.5m past spawn-side bridge edge
+    const spawnLand     = bz + sz * 2.0;   // exactly at spawn-side bridge edge
+    // Center-side stairs (approach from z closer to center, land at bridge center-edge)
+    const centerApproach = bz - sz * 5.5;  // 5.5m past center-side bridge edge
+    const centerLand     = bz - sz * 2.0;  // exactly at center-side bridge edge
+    for (const sx of [-1, 1]) {
+      const xAt = sx * 20;
+      buildStaircase(xAt, spawnApproach,  xAt, spawnLand,  3.7, 3, tmat.stone);
+      buildStaircase(xAt, centerApproach, xAt, centerLand, 3.7, 3, tmat.stone);
+    }
+  }
+
+  // ========== CHOIR LOFTS (high tier — sniper perches at each end) ==========
+  for (const sz of [-1, 1]) {
+    const loftCenterZ = sz * (ARENA - 4);
+    box(16, 0.5, 7, 0, 6, loftCenterZ, tmat.stoneL);
+    // Inner railing — split with 3m gaps at x=±6 where stairs land
+    const innerEdge = loftCenterZ - sz * 3.5;
+    box(9, 1.0, 0.3, 0, 6 + 0.75, innerEdge, tmat.stone); // center -4.5 to +4.5
+    // Side railings
+    for (const sx of [-1, 1]) {
+      box(0.3, 1.0, 7, sx * 8 - sx * 0.15, 6 + 0.75, loftCenterZ, tmat.stone);
+    }
+    // Support pillars from ground (inner-facing corners) — keep clear of stair X
+    for (const sx of [-1, 1]) {
+      box(0.8, 6, 0.8, sx * 7.5, 3, loftCenterZ - sz * 3, tmat.stoneDk);
+    }
+    // Decorative arch above the loft railing — also gapped at stairs
+    decor(8, 0.4, 0.3, 0, 8.2, innerEdge, tmat.stoneDk);
+  }
+
+  // Stairs from ground UP to each choir loft (2 per loft = 4 total)
+  for (const sz of [-1, 1]) {
+    for (const sx of [-1, 1]) {
+      const xAt = sx * 6;
+      const startZ = sz * (ARENA - 8 - 5);
+      const endZ   = sz * (ARENA - 8);
+      buildStaircase(xAt, startZ, xAt, endZ, 6, 2.5, tmat.stone);
+    }
+  }
+
+  // ========== CHANDELIERS (hanging from ceiling, atmospheric light) ==========
+  for (const z of [-22, 0, 22]) {
+    decor(2.4, 0.15, 2.4, 0, 11, z, tmat.iron);
+    for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      decor(0.05, 3.5, 0.05, dx * 1, 12.7, z + dz * 1, tmat.iron);
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const cx = Math.cos(a) * 1.0;
+      const cz = z + Math.sin(a) * 1.0;
+      decor(0.1, 0.25, 0.1, cx, 11.32, cz, tmat.iron);
+      const flame = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.15), tmat.flame.clone());
+      flame.position.set(cx, 11.55, cz);
+      scene.add(flame);
+    }
+    const pl = new THREE.PointLight(0xffc880, 0.55, 16, 2);
+    pl.position.set(0, 11, z);
+    scene.add(pl);
+    world.flickerLights.push({
+      light: pl, base: 0.55,
+      phase: Math.random() * Math.PI * 2, fast: false, isTorch: false,
+    });
+  }
+
+  // ========== FLOOR CANDLES (atmospheric, no collide) ==========
+  const candleSpots = [
+    [-17, -28], [17, -28], [-17, 28], [17, 28],
+    [-26,   0], [26,   0],
+    [-17, -10], [17, -10], [-17, 10], [17, 10],
+  ];
+  for (const [cx, cz] of candleSpots) {
+    decor(0.18, 1.5, 0.18, cx, 0.75, cz, tmat.iron);
+    decor(0.30, 0.10, 0.30, cx, 1.55, cz, tmat.iron);
+    const flame = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.30, 0.20), tmat.flame.clone());
+    flame.position.set(cx, 1.70, cz);
+    scene.add(flame);
+    const pl = new THREE.PointLight(0xff8a3a, 0.55, 9, 2);
+    pl.position.set(cx, 1.70, cz);
+    scene.add(pl);
+    world.flickerLights.push({
+      light: pl, mesh: flame, base: 0.55,
+      phase: Math.random() * Math.PI * 2, fast: true, isTorch: true,
+    });
+  }
+
+  // ========== STATUES (set dressing in alcoves, no big silhouette block) ==========
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const x = sx * (ARENA - 5);
+      const z = sz * 5;
+      box(1.2, 0.6, 1.2, x, 0.3, z, tmat.stoneDk);   // pedestal (collide)
+      decor(0.7, 1.8, 0.7, x, 1.5, z, tmat.stoneL); // robe body
+      decor(0.4, 0.4, 0.4, x, 2.6, z, tmat.stoneL); // head
+      decor(0.5, 0.05, 0.5, x, 2.85, z, tmat.gold); // halo
+    }
+  }
+
+  // ========== CEILING (with central dome opening) ==========
+  // Flat stone ceiling at y=14, with an 18x18 opening at center for the dome.
+  // Built as 4 slabs around the opening.
+  const ceilY = 14;
+  // North slab (z = -40 to -9), width 80, depth 31
+  decor(80, 0.5, 31, 0, ceilY + 0.25, -24.5, tmat.stoneDk);
+  // South slab
+  decor(80, 0.5, 31, 0, ceilY + 0.25,  24.5, tmat.stoneDk);
+  // West slab (x = -40 to -9, between north and south slabs)
+  decor(31, 0.5, 18, -24.5, ceilY + 0.25, 0, tmat.stoneDk);
+  // East slab
+  decor(31, 0.5, 18,  24.5, ceilY + 0.25, 0, tmat.stoneDk);
+  // Ceiling ribs running N-S (visible from below)
+  for (const x of [-32, -22, -12, 12, 22, 32]) {
+    decor(0.6, 0.35, 80, x, ceilY - 0.18, 0, tmat.stoneDk);
+  }
+  // Ceiling ribs running E-W (broken around the dome opening)
+  for (const z of [-32, -22, -12, 12, 22, 32]) {
+    decor(80, 0.35, 0.6, 0, ceilY - 0.18, z, tmat.stoneDk);
+  }
+  // Gilded crossing at the edge of the dome opening (rectangular frame)
+  for (const dz of [-9, 9]) {
+    decor(20, 0.4, 0.6, 0, ceilY - 0.2, dz, tmat.gold);
+  }
+  for (const dx of [-9, 9]) {
+    decor(0.6, 0.4, 20, dx, ceilY - 0.2, 0, tmat.gold);
+  }
+
+  // ========== CENTRAL DOME (above the altar, on top of the ceiling) ==========
+  const dY = ceilY;
+  // Drum (base) — square cylinder feel
+  decor(18, 3.5, 18, 0, dY + 1.75, 0, tmat.stoneL);
+  // Drum windows on each face (visible from outside)
+  for (const [dx, dz, isX] of [
+    [ 9.1, 0, true], [-9.1, 0, true],
+    [0,  9.1, false], [0, -9.1, false],
+  ]) {
+    const w = isX ? 0.15 : 5;
+    const d = isX ? 5 : 0.15;
+    decor(w, 2.5, d, dx, dY + 1.75, dz, tmat.glassY);
+  }
+  // Drum corner columns
+  for (const [dx, dz] of [[9.2, 9.2], [-9.2, 9.2], [9.2, -9.2], [-9.2, -9.2]]) {
+    decor(0.7, 3.7, 0.7, dx, dY + 1.85, dz, tmat.stoneDk);
+  }
+  // Gold ring at top of drum
+  decor(19.5, 0.3, 19.5, 0, dY + 3.5 + 0.15, 0, tmat.gold);
+
+  // Dome body — stacked tiers, each smaller and shorter (approximates a hemisphere)
+  let yPos = dY + 3.65;
+  const domeTiers = [
+    // [width, height]
+    [16, 1.5],
+    [13.5, 1.4],
+    [11, 1.3],
+    [ 8.5, 1.2],
+    [ 6, 1.0],
+  ];
+  for (const [w, h] of domeTiers) {
+    decor(w, h, w, 0, yPos + h/2, 0, tmat.stoneL);
+    // Gold rim at the bottom of each tier
+    decor(w + 0.3, 0.12, w + 0.3, 0, yPos + 0.06, 0, tmat.gold);
+    yPos += h;
+  }
+
+  // Dome ribs (8 vertical strips on the outside, gold)
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const r = 9.3;
+    const dx = Math.cos(angle) * r;
+    const dz = Math.sin(angle) * r;
+    decor(0.25, 7, 0.25, dx, dY + 3.5 + 3.5, dz, tmat.gold);
+  }
+
+  // Lantern (small structure crowning the dome)
+  decor(3, 1.4, 3, 0, yPos + 0.7, 0, tmat.stoneDk);
+  // Lantern windows
+  for (const [dx, dz, isX] of [
+    [ 1.55, 0, true], [-1.55, 0, true],
+    [0,  1.55, false], [0, -1.55, false],
+  ]) {
+    const w = isX ? 0.1 : 1.4;
+    const d = isX ? 1.4 : 0.1;
+    decor(w, 0.9, d, dx, yPos + 0.7, dz, tmat.glassY);
+  }
+  // Lantern cap
+  decor(3.4, 0.25, 3.4, 0, yPos + 1.4 + 0.13, 0, tmat.gold);
+  // Small dome on top of lantern
+  decor(2, 0.7, 2, 0, yPos + 1.65 + 0.35, 0, tmat.gold);
+  decor(1.2, 0.5, 1.2, 0, yPos + 2.35 + 0.25, 0, tmat.gold);
+  yPos += 2.6;
+
+  // Cross at the very top
+  decor(0.4, 3.5, 0.4, 0, yPos + 1.75, 0, tmat.gold);
+  decor(2.2, 0.4, 0.4, 0, yPos + 2.5, 0, tmat.gold);
+  // Small finial sphere where cross arms meet
+  decor(0.7, 0.7, 0.7, 0, yPos + 2.5, 0, tmat.gold);
+
+  // ========== WALL CROSSES (large, mounted above rose windows) ==========
+  for (const sz of [-1, 1]) {
+    decor(0.4, 3.5, 0.3, 0, 16.5, sz * (ARENA - 0.7), tmat.gold);
+    decor(2.0, 0.4, 0.3, 0, 17.2, sz * (ARENA - 0.7), tmat.gold);
+    decor(0.7, 0.7, 0.3, 0, 17.2, sz * (ARENA - 0.7), tmat.gold);
+  }
+  // Smaller crosses high on side walls
+  for (const sx of [-1, 1]) {
+    for (const z of [-22, 0, 22]) {
+      decor(0.3, 0.3, 1.3, sx * (ARENA - 0.7), 13, z, tmat.gold);
+      decor(0.3, 1.6, 0.4, sx * (ARENA - 0.7), 13, z, tmat.gold);
+    }
+  }
+
+  // ========== HANGING BANNERS (long fabric between pillars) ==========
+  // Alternating red and blue, hung from the upper level
+  for (const sx of [-1, 1]) {
+    for (let i = 0; i < 4; i++) {
+      const z = -22 + i * 14;
+      const c = (i % 2 === 0) ? tmat.glassR : tmat.glassB;
+      // Banner cloth
+      decor(0.5, 4.5, 0.08, sx * 12 + sx * 0.7, 7, z, c);
+      // Top rod
+      decor(0.3, 0.15, 0.6, sx * 12 + sx * 0.7, 9.3, z, tmat.gold);
+      // Bottom trim
+      decor(0.6, 0.2, 0.12, sx * 12 + sx * 0.7, 4.75, z, tmat.gold);
+    }
+  }
+
+  // ========== TALL CANDELABRAS (corners of nave, atmospheric light) ==========
+  const candelabraSpots = [
+    [-25, -22], [25, -22], [-25, 22], [25, 22],
+    [-25,   0], [25,   0],
+  ];
+  for (const [cx, cz] of candelabraSpots) {
+    // Base
+    decor(0.8, 0.3, 0.8, cx, 0.15, cz, tmat.stoneDk);
+    // Tall post
+    decor(0.18, 2.8, 0.18, cx, 1.45, cz, tmat.iron);
+    // Cross-arms at top (5-candle holder pattern)
+    decor(1.4, 0.1, 0.18, cx, 2.85, cz, tmat.iron);
+    decor(0.18, 0.1, 1.4, cx, 2.85, cz, tmat.iron);
+    // 5 candle cups + flames + point light
+    for (const [dx, dz] of [[-0.6, 0], [0.6, 0], [0, -0.6], [0, 0.6], [0, 0]]) {
+      decor(0.12, 0.20, 0.12, cx + dx, 3.0, cz + dz, tmat.iron);
+      const flame = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 0.16), tmat.flame.clone());
+      flame.position.set(cx + dx, 3.22, cz + dz);
+      scene.add(flame);
+    }
+    const pl = new THREE.PointLight(0xff8a3a, 0.55, 10, 2);
+    pl.position.set(cx, 3.2, cz);
+    scene.add(pl);
+    world.flickerLights.push({
+      light: pl, base: 0.55,
+      phase: Math.random() * Math.PI * 2, fast: true, isTorch: true,
+    });
+  }
+
+  // ========== HOLY WATER FONTS (at each spawn corner) ==========
+  for (const sz of [-1, 1]) {
+    for (const sx of [-1, 1]) {
+      const fx = sx * 18;
+      const fz = sz * (ARENA - 6);
+      decor(0.9, 0.6, 0.9, fx, 0.3, fz, tmat.stoneDk);   // pedestal
+      decor(1.1, 0.15, 1.1, fx, 0.68, fz, tmat.stoneL);  // basin lip
+      decor(0.85, 0.04, 0.85, fx, 0.78, fz, tmat.glassB);// water surface (blue)
+      // Tiny cross above
+      decor(0.08, 0.4, 0.08, fx, 1.0, fz, tmat.gold);
+      decor(0.25, 0.08, 0.08, fx, 1.15, fz, tmat.gold);
+    }
+  }
+
+  // ========== WALL ALCOVES with small statues (set dressing) ==========
+  // Stations-of-the-cross style — small framed plaques on side walls
+  for (const sx of [-1, 1]) {
+    for (const z of [-26, -18, -10, 10, 18, 26]) {
+      // Frame
+      decor(0.2, 1.4, 0.9, sx * (ARENA - 0.6), 5.5, z, tmat.gold);
+      // Inset (dark)
+      decor(0.1, 1.2, 0.7, sx * (ARENA - 0.5), 5.5, z, tmat.stoneDk);
+    }
+  }
+
+  // ========== ALTAR DECORATION — large banner behind altar ==========
+  // Two big banners flanking the altar, hanging from ceiling level
+  for (const sz of [-1, 1]) {
+    decor(3, 8, 0.1, 0, 6, sz * 4.5, sz > 0 ? tmat.glassR : tmat.glassB);
+    decor(3.4, 0.25, 0.18, 0, 9.95, sz * 4.5, tmat.gold);  // top rod
+  }
+
+  // ========== MOON + STARS ==========
+  const moonMesh = new THREE.Mesh(new THREE.BoxGeometry(8, 8, 0.5),
+    new THREE.MeshBasicMaterial({ color: 0xe0e8f8 }));
+  moonMesh.position.set(35, 42, -60);
+  scene.add(moonMesh);
+  const halo = new THREE.Mesh(new THREE.BoxGeometry(12, 12, 0.4),
+    new THREE.MeshBasicMaterial({ color: 0x5a6a90, transparent: true, opacity: 0.5 }));
+  halo.position.set(35, 42, -60.1);
+  scene.add(halo);
+  const starGeo = new THREE.BufferGeometry();
+  const starCount = 150;
+  const starPos = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = 80 + Math.random() * 30;
+    starPos[i*3]   = Math.cos(a) * r;
+    starPos[i*3+1] = 35 + Math.random() * 30;
+    starPos[i*3+2] = Math.sin(a) * r;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  scene.add(new THREE.Points(starGeo,
+    new THREE.PointsMaterial({ color: 0xc0c8d8, size: 0.3, sizeAttenuation: true, transparent: true, opacity: 0.7 })));
+
+  // ========== DUST MOTES (slow-drifting atmosphere) ==========
+  const dustCount = 110;
+  const dustGeo = new THREE.BufferGeometry();
+  const dustPos = new Float32Array(dustCount * 3);
+  for (let i = 0; i < dustCount; i++) {
+    dustPos[i*3]   = (Math.random() - 0.5) * 76;
+    dustPos[i*3+1] = Math.random() * 13 + 1;
+    dustPos[i*3+2] = (Math.random() - 0.5) * 76;
+  }
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+  world.embers = new THREE.Points(dustGeo,
+    new THREE.PointsMaterial({ color: 0xc0c4d0, size: 0.07, sizeAttenuation: true, transparent: true, opacity: 0.45 }));
+  scene.add(world.embers);
+
+  // ========== Void floor below ==========
+  const voidFloor = new THREE.Mesh(
+    new THREE.BoxGeometry(400, 0.5, 400),
+    new THREE.MeshBasicMaterial({ color: 0x000000 })
+  );
+  voidFloor.position.y = -3;
+  scene.add(voidFloor);
+}
+
 // === Choose which map to build at startup ===
 // Default to Blackwater Alley for v0.8. A map-picker UI will come next session.
 // Selected map — populated from SETTINGS (set via the map picker on main menu).
 const CURRENT_MAP = SETTINGS.map || 'necropolis';
 if (CURRENT_MAP === 'blackwater') buildBlackwaterAlley();
+else if (CURRENT_MAP === 'cathedral') buildCathedral();
 else buildNecropolis();
 
 // =========================================================
@@ -3813,6 +4486,25 @@ if (CURRENT_MAP === 'necropolis') {
   dummies.push(new Dummy(  0,   6,  Math.PI, 2.8));
   dummies.push(new Dummy(  0,  -3.5, 0,      4.2));
   dummies.push(new Dummy(  0,   0,  Math.PI, 7.0));
+} else if (CURRENT_MAP === 'cathedral') {
+  // Cathedral practice mummies — placed symmetrically across all three tiers
+  const positions = [
+    // Ground floor — nave + aisles, all mirrored
+    [  0, -14, Math.PI],  [  0,  14, Math.PI],
+    [ -7, -20, Math.PI],  [  7, -20, Math.PI],
+    [ -7,  20, Math.PI],  [  7,  20, Math.PI],
+    [-22,   0, Math.PI / 2], [ 22,   0, -Math.PI / 2],
+    [-22, -16, 0], [ 22, -16, 0], [-22, 16, 0], [ 22, 16, 0],
+  ];
+  for (const [x, z, f] of positions) dummies.push(new Dummy(x, z, f));
+  // Bridge mummies (mid-tier at y=3.5+0.2)
+  dummies.push(new Dummy(-12, -8, Math.PI, 3.7));
+  dummies.push(new Dummy( 12, -8, Math.PI, 3.7));
+  dummies.push(new Dummy(-12,  8, Math.PI, 3.7));
+  dummies.push(new Dummy( 12,  8, Math.PI, 3.7));
+  // Choir loft mummies (high tier, the prize targets)
+  dummies.push(new Dummy(  0, -36, Math.PI, 6.25));
+  dummies.push(new Dummy(  0,  36, Math.PI, 6.25));
 } else if (CURRENT_MAP === 'blackwater') {
   // Blackwater Alley layout — smaller arena (80x80), player spawns at z=+28
   const positions = [
@@ -4705,9 +5397,25 @@ document.getElementById('set-reset').addEventListener('click', () => {
   SETTINGS.scopeFov = 22;
   SETTINGS.volume = 0.7;
   SETTINGS.pixelScale = 2.4;
+  SETTINGS.crt = false;
   syncSettingsUI();
+  applyCrtMode();
   applySettingsLive();
 });
+
+// CRT mode toggle
+const setCrtBtn = document.getElementById('set-crt');
+function applyCrtMode() {
+  document.body.classList.toggle('crt-on', !!SETTINGS.crt);
+  setCrtBtn.classList.toggle('on', !!SETTINGS.crt);
+  setCrtBtn.textContent = SETTINGS.crt ? 'ON' : 'OFF';
+}
+setCrtBtn.addEventListener('click', () => {
+  SETTINGS.crt = !SETTINGS.crt;
+  applyCrtMode();
+  saveSettings();
+});
+applyCrtMode();
 document.getElementById('set-back').addEventListener('click', () => {
   settingsPanel.classList.remove('show');
   showMainMenu();
